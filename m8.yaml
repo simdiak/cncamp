@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpserver
+  template:
+    metadata:
+      labels:
+        app: httpserver
+    spec:
+      initContainers:
+        - name: init-httpserver
+          image: simdiak/http_server:latest
+          command: ['sh', '-c', 'echo The app is running!']
+      containers:
+        - name: httpserver
+          image: simdiak/http_server:latest
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          env:
+            - name: HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: httpserver-env
+                  key: HOST
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: httpserver-env
+                  key: PORT
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/httpserver.pid
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      imagePullSecrets:
+        - name: dockerhub

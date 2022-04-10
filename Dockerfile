@@ -4,7 +4,8 @@ WORKDIR /svr
 ENV CGO_ENABLED=0
 RUN go build http_server.go
 
-FROM scratch
+#FROM scratch
+FROM debian
 COPY --from=builder /svr /svr
 WORKDIR /svr
 ENTRYPOINT ["./http_server"]
