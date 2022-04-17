@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpserver-tls
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: z.x.ntes.com
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: httpserver
+                port:
+                  number: 8080
+            path: /
+  tls:
+    - hosts:
+      - z.x.ntes.com
+      secretName: x-ntes-com
