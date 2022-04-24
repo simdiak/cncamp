@@ -11,6 +11,10 @@ spec:
     metadata:
       labels:
         app: httpserver
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8080"
     spec:
       affinity:
         podAntiAffinity:
@@ -24,11 +28,11 @@ spec:
             topologyKey: "kubernetes.io/hostname"
       initContainers:
         - name: init-httpserver
-          image: simdiak/http_server:latest
+          image: simdiak/httpserver:latest
           command: ['sh', '-c', 'echo The app is running!']
       containers:
         - name: httpserver
-          image: simdiak/http_server:latest
+          image: simdiak/httpserver:latest
           imagePullPolicy: Always
           resources:
             limits:
@@ -64,3 +68,35 @@ spec:
             periodSeconds: 5
       imagePullSecrets:
         - name: dockerhub
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: httpserver-env
+  namespace: default
+data:
+  HOST: 0.0.0.0
+  PORT: "8080"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpserver-tls
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: z.x.ntes.com
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: httpserver
+                port:
+                  number: 8080
+            path: /
+  tls:
+    - hosts:
+      - z.x.ntes.com
+      secretName: x-ntes-com

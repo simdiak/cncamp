@@ -2,23 +2,38 @@ package main
 
 import (
 	"fmt"
+	"httpserver/metrics"
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("GET /")
+	log.Printf("GET %s\n", r.URL.Path)
 	io.WriteString(w, "Hello, world!\n")
 }
 
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("GET /healthz")
+	io.WriteString(w, "")
+}
+
+func timerHandler(w http.ResponseWriter, r *http.Request) {
+	timer := metrics.Timer()
+	defer func() {
+		timer.Finish()
+		log.Printf("GET /Timer -> %.2f seconds\n", timer.Duration)
+	}()
+	time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond)
 	io.WriteString(w, "")
 }
 
@@ -58,6 +73,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", helloHandler)
 	mux.HandleFunc("/healthz", healthzHandler)
+	metrics.RegisterMetrics()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/timer", timerHandler)
 	log.Printf("Start HTTP server (%d) on %s ...\n", my_pid, bindstr)
 	if err := http.ListenAndServe(bindstr, mux); err != nil {
 		log.Fatalln("failed!")
