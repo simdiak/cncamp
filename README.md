@@ -99,3 +99,9 @@ loki-prometheus-pushgateway     ClusterIP   10.233.46.237   <none>        9091/T
 loki-prometheus-server          NodePort    10.233.48.33    <none>        80:32688/TCP   9m29s
 ```
 ![image](prometheus-graph.jpg)
+
+## 小结
+
+* 其实这个`custom-endpoints`不用加的，因为`kubernetes-service-endpoints`已经包含了它，所以在targets会有重复
+* 如果是手动添加RBAC，则需要`ClusterRole/ServiceAccount/ClusterRoleBinding`设置才能使用，见`prometheus-rbac.yaml`
+
