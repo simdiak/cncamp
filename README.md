@@ -8,26 +8,94 @@ docker build -t simdiak/httpserver .
 docker push simdiak/httpserver:latest
 ```
 
-## 更新了部署配置
+## 更新了部署配置和prometheus服务发现
 
 * m8.yaml
 
-## 安装prometheus
+## 安装loki
+
+* 下载
+```
+helm repo add grafana https://grafana.github.io/helm-charts
+helm fetch grafana/loki-stack --untar
+```
+* loki-stack/values.yaml
+```
+grafana:
+  enabled: true
+  sidecar:
+    datasources:
+      enabled: true
+      maxLines: 1000
+  image:
+    tag: 8.3.5
+
+prometheus:
+  enabled: true
+  isDefault: false
+  alertmanager:
+    persistentVolume:
+      enabled: false
+  server:
+    persistentVolume:
+      enabled: false
+```
+* loki-stack/charts/prometheus/values.yaml
+```
+extraScrapeConfigs: |
+  - job_name: custom-endpoints
+    kubernetes_sd_configs:
+    - role: endpoints
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+      action: replace
+      target_label: __scheme__
+      regex: (https?)
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+      action: replace
+      target_label: __address__
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+    - source_labels: [__meta_kubernetes_pod_name]
+      action: replace
+      target_label: kubernetes_pod_name
+```
+* 安装
+```
+helm install loki loki-stack \
+    --create-namespace \
+    --namespace loki-stack
+```
+
+## 打开NodePort从prometheus查看
 
 ```
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack --create-namespace -n prometheus-stack
+# kubectl edit svc -n loki-stack loki-prometheus-server
+service/loki-prometheus-server edited
+# kubectl get svc -n loki-stack
+NAME                            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+loki                            ClusterIP   10.233.32.220   <none>        3100/TCP       9m29s
+loki-grafana                    ClusterIP   10.233.9.146    <none>        80/TCP         9m29s
+loki-headless                   ClusterIP   None            <none>        3100/TCP       9m29s
+loki-kube-state-metrics         ClusterIP   10.233.11.99    <none>        8080/TCP       9m29s
+loki-prometheus-alertmanager    ClusterIP   10.233.12.38    <none>        80/TCP         9m29s
+loki-prometheus-node-exporter   ClusterIP   None            <none>        9100/TCP       9m29s
+loki-prometheus-pushgateway     ClusterIP   10.233.46.237   <none>        9091/TCP       9m29s
+loki-prometheus-server          NodePort    10.233.48.33    <none>        80:32688/TCP   9m29s
 ```
-
-## 配置服务发现
-
-```
-kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml -n prometheus-stack
-```
-
-## 配置RBAC
-
-```
-kubectl create -f prometheus-rbac.yaml
-```
+![image](prometheus-graph.jpg)
