@@ -100,6 +100,12 @@ loki-prometheus-server          NodePort    10.233.48.33    <none>        80:326
 ```
 ![image](prometheus-graph.jpg)
 
+## 配置grafana的指标显示
+
+* 只是配上去，其实这数据是乱搞的只是为了有东西展示
+  * ![image](panel1.jpg)
+  * ![image](panel2.jpg)
+
 ## 小结
 
 * 其实这个`custom-endpoints`不用加的，因为`kubernetes-service-endpoints`已经包含了它，所以在targets会有重复
