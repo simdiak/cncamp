@@ -1,0 +1,44 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: simple
+spec:
+  gateways:
+    - simple
+  hosts:
+    - myk8s-istio.x.test.com
+  http:
+    - match:
+        - port: 443
+      route:
+        - destination:
+            host: httpserver.default.svc.cluster.local
+            port:
+              number: 8080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: simple
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - myk8s-istio.x.test.com
+      port:
+        name: http-simple
+        number: 80
+        protocol: HTTP
+      tls:
+        httpsRedirect: true
+    - hosts:
+        - myk8s-istio.x.test.com
+      port:
+        name: https-simple
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: x-ntes-com
+
